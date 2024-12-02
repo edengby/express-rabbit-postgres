@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"    # RabbitMQ default port
+      - "15672:15672"  # RabbitMQ Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: distributed_system
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  manager:
+    build: ./manager
+    container_name: manager
+    depends_on:
+      - rabbitmq
+      - postgres
+    ports:
+      - "3000:3000"
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - POSTGRES_URL=postgres://admin:admin@postgres:5432/distributed_system
+    volumes:
+      - ./manager:/usr/src/app
+    command: npm run start
+
+  agent:
+    build: ./agent
+    container_name: agent
+    depends_on:
+      - rabbitmq
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - DEVICE_ID=device_123
+    volumes:
+      - ./agent:/usr/src/app
+    command: npm run start
+
+volumes:
+  postgres_data:
